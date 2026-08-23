@@ -1,0 +1,12 @@
+# Virtual environment (this directory doubles as one; SysHelper.py
+# itself has no dependencies and doesn't need it to run)
+bin/
+lib/
+lib64
+include/
+pyvenv.cfg
+
+# Python
+__pycache__/
+*.pyc
+.ruff_cache/
