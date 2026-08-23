@@ -290,7 +290,10 @@ def build_resource_items():
 
 
 def check_pacman_updates():
-    """Return (package_names, install_command), or None if updates can't be checked."""
+    """Return (package_names, install_command), or None if updates can't be checked.
+
+    install_command excludes 'sudo' itself; run_with_sudo() adds that.
+    """
     if shutil.which('checkupdates') is None:
         print("I can't check for updates yet because the 'checkupdates' "
               "tool isn't installed.")
@@ -305,7 +308,7 @@ def check_pacman_updates():
     packages = [
         line.split()[0] for line in result.stdout.strip().split('\n') if line.strip()
     ]
-    return packages, "sudo pacman -Syu"
+    return packages, ['pacman', '-Syu']
 
 
 def check_apt_updates():
@@ -318,7 +321,7 @@ def check_apt_updates():
         for line in result.stdout.strip().split('\n')
         if '/' in line
     ]
-    return packages, "sudo apt upgrade"
+    return packages, ['apt', 'upgrade']
 
 
 def check_dnf_updates():
@@ -335,7 +338,7 @@ def check_dnf_updates():
         # no dot in the first one, so this skips them along with blanks.
         if len(parts) == 3 and '.' in parts[0]:
             packages.append(parts[0].rsplit('.', 1)[0])
-    return packages, "sudo dnf upgrade"
+    return packages, ['dnf', 'upgrade']
 
 
 def check_zypper_updates():
@@ -351,7 +354,7 @@ def check_zypper_updates():
         # first column; that also skips the header and separator rows.
         if len(columns) >= 3 and columns[0] == 'v':
             packages.append(columns[2])
-    return packages, "sudo zypper update"
+    return packages, ['zypper', 'update']
 
 
 # One entry per supported package manager: the command that reveals it's
@@ -529,7 +532,18 @@ class SysHelper(cmd.Cmd):
         print(f"Found {len(packages)} update(s) available:")
         for i, package_name in enumerate(packages, 1):
             print(f"{i}. {package_name}")
-        print(f"To install these updates, type: {install_command}")
+
+        answer = input(
+            "Would you like to install these updates now? This may take a "
+            "while and will ask for your password. Type yes or no: "
+        ).strip().lower()
+        if answer not in ('yes', 'y'):
+            command_text = ' '.join(['sudo', *install_command])
+            print(f"Okay, I won't install anything. To do it yourself "
+                  f"later, type: {command_text}")
+            return
+
+        run_with_sudo(install_command, "The update")
 
     def do_ram(self, arg):
         """Show what's using the most memory, and close or stop one."""
