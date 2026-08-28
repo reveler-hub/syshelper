@@ -95,6 +95,7 @@ Type a command name or its number, and press Enter with nothing typed to skip an
 - **"I couldn't find a supported package manager"** — `updates` and `cleanup` currently support `pacman`, `apt`, `dnf`, and `zypper`. Other package managers aren't recognized yet.
 - **Updates or cleanup says it "did not finish successfully"** — this usually means the `sudo` password was wrong, cancelled, or your user account doesn't have `sudo` rights. Nothing is installed or deleted when this happens.
 - **"I don't have permission to close" a process** — SysHelper only closes processes and stops services your own user account owns. Anything owned by another user or `root` needs to be handled with elevated tools directly.
+- **"This computer doesn't use systemd"** — `cpu`, `ram`, and `logs` use `systemctl` to find and describe background services. On a distro without systemd (Alpine, Void, artix, and similar), `cpu` and `ram` still work but only show plain processes, and `logs` isn't available.
 - **"I couldn't complete that test run" (speedtest)** — the test server couldn't be reached for one or more of the three runs. If this happens every time, check your internet connection with `network` first.
 - **No battery found on a laptop** — SysHelper looks for a `BAT*` entry under `/sys/class/power_supply`. If your battery uses a non-standard name, it may not be detected.
 

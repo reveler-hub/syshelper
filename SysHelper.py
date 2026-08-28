@@ -142,8 +142,16 @@ def parse_unit_descriptions(systemctl_output):
     return descriptions
 
 
+def has_systemctl():
+    """Whether this system has systemd's 'systemctl' available."""
+    return shutil.which('systemctl') is not None
+
+
 def get_running_user_services():
     """Return (unit_name, pid, description) for each running service with a main pid."""
+    if not has_systemctl():
+        return []
+
     result = subprocess.run(
         ['systemctl', '--user', 'list-units', '--type=service',
          '--state=running', '--no-legend', '--plain'],
@@ -628,6 +636,11 @@ class SysHelper(cmd.Cmd):
 
     def do_logs(self, arg):
         """View the most recent log entries for your background services."""
+        if not has_systemctl():
+            print("This computer doesn't use systemd, so I can't look up "
+                  "background service logs here.")
+            return
+
         print("Fetching your background services...")
 
         # Grab running and failed user services
