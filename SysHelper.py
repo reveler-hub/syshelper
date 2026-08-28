@@ -5,6 +5,8 @@ import shutil
 import signal
 import subprocess
 import time
+import urllib.error
+import urllib.request
 from typing import ClassVar
 
 # SysHelper only uses the Python standard library plus command-line tools
@@ -244,6 +246,67 @@ def run_with_sudo(command, action_description):
     return False
 
 
+SPEEDTEST_URL = 'https://speed.cloudflare.com/__down?bytes=10000000'
+
+
+def measure_download_speed_mbps(url=SPEEDTEST_URL):
+    """Download a test file once and return the speed in megabits per second.
+
+    Returns None if the download fails (no internet, host unreachable,
+    and so on) so callers can report that plainly instead of crashing.
+    """
+    # Cloudflare rejects requests with urllib's default User-Agent (it
+    # looks like a bot), so a normal browser-style one is sent instead.
+    request = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    try:
+        start = time.monotonic()
+        with urllib.request.urlopen(request, timeout=15) as response:
+            total_bytes = 0
+            while True:
+                chunk = response.read(65536)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+        elapsed = time.monotonic() - start
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+    if elapsed <= 0 or total_bytes == 0:
+        return None
+    return (total_bytes * 8) / elapsed / 1_000_000
+
+
+SPEEDTEST_UPLOAD_URL = 'https://speed.cloudflare.com/__up'
+SPEEDTEST_UPLOAD_BYTES = 1_000_000
+
+
+def measure_upload_speed_mbps(
+    url=SPEEDTEST_UPLOAD_URL, num_bytes=SPEEDTEST_UPLOAD_BYTES
+):
+    """Upload random test data once and return the speed in megabits per second.
+
+    Returns None if the upload fails, the same way
+    measure_download_speed_mbps() does.
+    """
+    payload = os.urandom(num_bytes)
+    headers = {
+        'User-Agent': 'Mozilla/5.0',
+        'Content-Type': 'application/octet-stream',
+    }
+    request = urllib.request.Request(url, data=payload, method='POST', headers=headers)
+    try:
+        start = time.monotonic()
+        with urllib.request.urlopen(request, timeout=15) as response:
+            response.read()
+        elapsed = time.monotonic() - start
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+    if elapsed <= 0:
+        return None
+    return (num_bytes * 8) / elapsed / 1_000_000
+
+
 def build_resource_items():
     """Return one entry per running pid, merging processes and services with no repeats.
 
@@ -419,6 +482,7 @@ class SysHelper(cmd.Cmd):
         ("uptime", "Show how long your computer has been running"),
         ("battery", "Check battery charge and status, if you have a laptop"),
         ("network", "Check if you're connected to the internet"),
+        ("speedtest", "Test your internet download and upload speed"),
         ("cleanup", "Clean up old package files to free up disk space"),
         ("quit", "Exit SysHelper"),
     ]
@@ -677,6 +741,51 @@ class SysHelper(cmd.Cmd):
         else:
             print("I couldn't reach the internet. You might be disconnected, "
                   "or a website might be down.")
+
+    def do_speedtest(self, arg):
+        """Test your internet download and upload speed, three times each."""
+        print("Testing your internet speed. This runs three times and "
+              "takes a moment...")
+
+        download_results = []
+        upload_results = []
+        for i in range(1, 4):
+            print(f"Run {i} of 3...")
+
+            download_mbps = measure_download_speed_mbps()
+            if download_mbps is None:
+                print("I couldn't complete the download part of that run. "
+                      "You might be disconnected, or the test server might "
+                      "be unreachable.")
+            else:
+                print(f"Run {i} download: {download_mbps:.1f} megabits per second.")
+                download_results.append(download_mbps)
+
+            upload_mbps = measure_upload_speed_mbps()
+            if upload_mbps is None:
+                print("I couldn't complete the upload part of that run.")
+            else:
+                print(f"Run {i} upload: {upload_mbps:.1f} megabits per second.")
+                upload_results.append(upload_mbps)
+
+        if not download_results and not upload_results:
+            print("I wasn't able to complete any test runs, so I can't "
+                  "report a speed.")
+            return
+
+        if download_results:
+            average_download = sum(download_results) / len(download_results)
+            print(f"Average download speed over {len(download_results)} "
+                  f"run(s): {average_download:.1f} megabits per second.")
+        else:
+            print("None of the download runs completed.")
+
+        if upload_results:
+            average_upload = sum(upload_results) / len(upload_results)
+            print(f"Average upload speed over {len(upload_results)} "
+                  f"run(s): {average_upload:.1f} megabits per second.")
+        else:
+            print("None of the upload runs completed.")
 
     def do_cleanup(self, arg):
         """Clean up old package files that take up disk space."""

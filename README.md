@@ -22,6 +22,7 @@ Everything is read out as full sentences, every action is menu-driven or a plain
 - **Finds what's slowing your computer down** — merges running processes and systemd services into a single deduplicated list (a service and its underlying process are never listed twice), sorted by processor time or memory use, and lets you close or stop the worst offender.
 - **Speaks in real names, not unit IDs** — uses systemd's own service descriptions (e.g. "Floorp - Web Browser") instead of raw unit names with random per-instance hashes that a screen reader would otherwise spell out letter by letter.
 - **Cross-distro update checking** — auto-detects Arch (`pacman`/`checkupdates`), Debian/Ubuntu (`apt`), Fedora/RHEL (`dnf`), or openSUSE (`zypper`) and checks the right one.
+- **Internet speed testing** — measures download and upload speed three times each and reports the averages in megabits per second, using only Python's standard library.
 - **Safe privileged actions** — installing updates or cleaning your package cache both ask for confirmation first, show you the exact `sudo` command before running it, and tell you plainly whether it actually succeeded or failed instead of assuming.
 - **Battery, uptime, and connectivity checks** — all reported as plain sentences ("Your battery is at 82 percent and is currently charging.").
 - **Recent service logs on demand** — pulls the last lines from `journalctl` for a service you pick by number.
@@ -73,8 +74,9 @@ Here is what SysHelper can do. Type the name or the number.
 6. uptime - Show how long your computer has been running
 7. battery - Check battery charge and status, if you have a laptop
 8. network - Check if you're connected to the internet
-9. cleanup - Clean up old package files to free up disk space
-10. quit - Exit SysHelper
+9. speedtest - Test your internet download speed
+10. cleanup - Clean up old package files to free up disk space
+11. quit - Exit SysHelper
 (sys) >
 ```
 
@@ -83,6 +85,7 @@ Type a command name or its number, and press Enter with nothing typed to skip an
 - `health` — reports CPU usage, memory usage, and free disk space in three sentences.
 - `cpu` — lists the top five processes and services by processor time, tells you which one is worst, and lets you type its number to close or stop it (with a yes/no confirmation first).
 - `updates` — detects your package manager, lists what's available to update, and asks if you'd like to install them now (or just tells you the command to run yourself later).
+- `speedtest` — measures your download and upload speed three times each and reports the averages.
 - `cleanup` — shows how much space your package cache is using, and only clears it if you confirm.
 
 ## Troubleshooting
@@ -92,6 +95,7 @@ Type a command name or its number, and press Enter with nothing typed to skip an
 - **"I couldn't find a supported package manager"** — `updates` and `cleanup` currently support `pacman`, `apt`, `dnf`, and `zypper`. Other package managers aren't recognized yet.
 - **Updates or cleanup says it "did not finish successfully"** — this usually means the `sudo` password was wrong, cancelled, or your user account doesn't have `sudo` rights. Nothing is installed or deleted when this happens.
 - **"I don't have permission to close" a process** — SysHelper only closes processes and stops services your own user account owns. Anything owned by another user or `root` needs to be handled with elevated tools directly.
+- **"I couldn't complete that test run" (speedtest)** — the test server couldn't be reached for one or more of the three runs. If this happens every time, check your internet connection with `network` first.
 - **No battery found on a laptop** — SysHelper looks for a `BAT*` entry under `/sys/class/power_supply`. If your battery uses a non-standard name, it may not be detected.
 
 ## License
